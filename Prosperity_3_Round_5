@@ -23,7 +23,35 @@ Notation / 符号说明:
 - Fee: 手续费 = 12 × (xᵢ×100/10)² × 1000 SeaShells
 - Objective: 最大化 ∑(Capital × rᵢ × xᵢ) – ∑Fee
 - Constraints: ∑|xᵢ| ≤ 1；–0.5 ≤ xᵢ ≤ 0.5
+
+---
+
+Below is the English version:
+
+This script implements a quantitative asset allocation strategy following the IMC Prosperity Round 5 quadratic programming approach.
+
+*Plain-English Explanation*
+1. We assign each product a sentiment score (e.g., '+++++' means strong positive), mapped to an expected return rᵢ.
+2. You can go long or short any amount; for each 1 % allocation xᵢ:
+   - **Gain** = Capital × rᵢ × xᵢ
+   - **Cost** (fee) ≈ 12 × (allocation%/10)² × 1000
+3. We let the computer find the allocation x₁…xₙ that maximizes **Gain – Cost**.
+4. Constraints:
+   - ∑|xᵢ| ≤ 100 % (total allocation limit)
+   - –50 % ≤ xᵢ ≤ +50 % (per-product cap)
+5. The solver returns real-valued allocations, then we round to integer percentages for execution.
+6. Finally, we calculate the expected net profit (in SeaShells) using these integer allocations.
+
+Notation:
+- n: number of products
+- xᵢ: allocation fraction for product i (positive = long, negative = short)
+- rᵢ: expected return for product i
+- Capital: total available capital (SeaShells)
+- Fee: transaction fee = 12 × (xᵢ×100/10)² × 1000
+- Objective: maximize ∑(Capital × rᵢ × xᵢ) – ∑Fee
+- Constraints: ∑|xᵢ| ≤ 1; –0.5 ≤ xᵢ ≤ 0.5
 """
+
 
 import cvxpy as cp
 import numpy as np
