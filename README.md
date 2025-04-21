@@ -31,9 +31,18 @@ A lightweight, high‑performance **quantitative allocator** that translates rea
 
 ---
 
-## 📦 Installation
+## 🔍 How It Works
 
-1. Clone the repo:  
-   ```bash
-   git clone https://github.com/your‑username/goldberg‑allocator.git
-   cd goldberg‑allocator
+1. **Score Mapping**  
+   Convert each news event’s sentiment into a numeric return expectation.
+
+2. **Objective**  
+   Maximize  
+   ```text
+   gain – fee = capital × (rᵀ x) – θ ∑ᵢ xᵢ²
+
+3. **Constraints**  
+   Total exposure (L1 norm) ≤ 100%
+   Single-asset bounds: –50% ≤ xᵢ ≤ +50%
+4. **Solve & Round**  
+   Use CVXPY’s solver, then round fractions to whole percents for trading.
