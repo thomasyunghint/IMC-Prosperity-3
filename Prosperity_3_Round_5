@@ -1,0 +1,87 @@
+"""
+Quant Strategy
+
+这是一个量化资产分配脚本，基于IMC Prosperity Round 5的二次规划思路。
+
+*比喻说明（人话版）*
+1. 我们先给每个商品打分（比如“+++++”代表好消息，映射成预期收益 rᵢ）。
+2. 假设你可以随意投入或卖空，每多下注一点（百分比 xᵢ），可能赚的钱是：
+   - **赚的** = 总资金 × rᵢ × xᵢ
+   - **花的**（手续费）≈ 12 × (下注%/10)² × 1000
+3. 让电脑帮你找一个“最划算下注比例 x₁…xₙ”，使得 **赚的 – 花的** 最大。
+4. 约束条件：
+   - ∑|xᵢ| ≤ 100%（总下注比例上限）
+   - –50% ≤ xᵢ ≤ +50%（单品限额）
+5. 电脑算出最优的小数结果，再四舍五入成整数%方便下单。
+6. 最终计算整数%下单后的预期净收益（SeaShells）。
+
+Notation / 符号说明:
+- n: 产品数量 (number of products)
+- xᵢ (allocation): 产品 i 的资金分配比例 (正为买入，负为卖空)
+- rᵢ (return): 产品 i 的预期收益率
+- Capital: 可用总资金 (SeaShells)
+- Fee: 手续费 = 12 × (xᵢ×100/10)² × 1000 SeaShells
+- Objective: 最大化 ∑(Capital × rᵢ × xᵢ) – ∑Fee
+- Constraints: ∑|xᵢ| ≤ 1；–0.5 ≤ xᵢ ≤ 0.5
+"""
+
+import cvxpy as cp
+import numpy as np
+
+# 1) Define sentiments and mapped returns
+sentiments = {
+    'Haystacks': '+++++++',
+    'Ranch_sauce': '++++++++',
+    'Cacti_Needle': '----------',
+    'Solar_panels': '-------',
+    'Red_Flags': '++++++',
+    'VR_Monocle': '+++++++++',
+    'Quantum_Coffee': '----------',
+    'Moonshine': '+++++',
+    'Striped_shirts': '++++++'
+}
+
+sent_to_return = {
+    '+++++++':   0.7,
+    '++++++++':  0.8,
+    '+++++++++': 0.9,
+    '++++++':    0.6,
+    '+++++':     0.5,
+    '-------':  -0.7,
+    '----------': -1.0
+}
+
+# 2) Prepare data
+targets = list(sentiments.keys())
+r = np.array([sent_to_return[sentiments[p]] for p in targets])
+
+# 3) Continuous solve for allocation fractions
+x = cp.Variable(len(targets))
+total_capital = 1_000_000
+cost_coef = 12 * (100/10)**2 * 1000  # fee factor
+
+objective = cp.Maximize(total_capital * (r @ x) - cost_coef * cp.sum_squares(x))
+constraints = [cp.norm1(x) <= 1, x <= 0.5, x >= -0.5]
+prob = cp.Problem(objective, constraints)
+prob.solve()
+
+# 4) Map to integer allocations
+x_cont = np.clip(x.value, -0.5, 0.5)
+x_pct = np.round(x_cont * 100).astype(int)
+abs_sum = np.sum(np.abs(x_pct))
+if abs_sum > 100:
+    x_pct = np.round(x_pct * (100/abs_sum)).astype(int)
+
+# 5) Compute net profit
+def net_profit(x_int):
+    ret = total_capital * (r @ (x_int/100))
+    fee = np.sum(12 * (x_int/10)**2 * 1000)
+    return ret - fee
+
+profit_int = net_profit(x_pct)
+
+# 6) Output results
+print("Optimal integer allocations (% of capital):")
+for prod, pct in zip(targets, x_pct):
+    print(f"  {prod:15s}: {pct}%")
+print(f"\nExpected net profit: {profit_int:.0f} SeaShells")
